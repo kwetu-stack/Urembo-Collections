@@ -1,0 +1,385 @@
+/* =====================================================
+   UREMBO COLLECTIONS™
+   KWETU PARTNERS SaaS Theme
+===================================================== */
+
+
+/* Global */
+
+body {
+
+    margin: 0;
+
+    background: #f5f7fb;
+
+    font-family:
+        "Segoe UI",
+        Tahoma,
+        Geneva,
+        Verdana,
+        sans-serif;
+
+    color: #0b1f33;
+
+}
+
+
+
+/* =====================================================
+   Top Navigation
+===================================================== */
+
+
+.kwetu-navbar {
+
+    height: 72px;
+
+    background: #0b1f33;
+
+    color: white;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 0 35px;
+
+    box-shadow:
+        0 3px 12px rgba(0,0,0,.15);
+
+}
+
+
+
+.brand {
+
+    display: flex;
+
+    flex-direction: column;
+
+    line-height: 1.2;
+
+}
+
+
+
+.brand strong {
+
+    font-size: 1.2rem;
+
+    letter-spacing: .5px;
+
+}
+
+
+
+.brand small {
+
+    color: #9fb4c8;
+
+    font-size: .85rem;
+
+}
+
+
+
+/* Navigation Links */
+
+
+.nav-links {
+
+    display: flex;
+
+    gap: 25px;
+
+}
+
+
+
+.nav-links a {
+
+    color: white;
+
+    text-decoration: none;
+
+    font-weight: 500;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    transition: .2s;
+
+}
+
+
+
+.nav-links a:hover {
+
+    color: #63b3ed;
+
+}
+
+
+
+/* User */
+
+
+.user-menu {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 20px;
+
+}
+
+
+
+.user-menu span {
+
+    color: white;
+
+}
+
+
+
+.user-menu a {
+
+    color: #63b3ed;
+
+    text-decoration: none;
+
+    font-weight: 600;
+
+}
+
+
+
+/* =====================================================
+   Main Container
+===================================================== */
+
+
+.main-container {
+
+    padding: 35px;
+
+    min-height: calc(100vh - 130px);
+
+}
+
+
+
+/* =====================================================
+   Dashboard Cards
+===================================================== */
+
+
+.card {
+
+    border: none;
+
+    border-radius: 16px;
+
+    background: white;
+
+    box-shadow:
+
+        0 5px 18px rgba(0,0,0,.08);
+
+}
+
+
+
+.card:hover {
+
+    transform: translateY(-3px);
+
+    transition: .2s;
+
+}
+
+
+
+/* =====================================================
+   Tables
+===================================================== */
+
+
+.table {
+
+    background:white;
+
+    border-radius:12px;
+
+    overflow:hidden;
+
+}
+
+
+
+.table thead {
+
+    background:#0b1f33;
+
+    color:white;
+
+}
+
+
+
+.table th {
+
+    padding:14px;
+
+}
+
+
+
+.table td {
+
+    padding:12px;
+
+}
+
+
+
+/* =====================================================
+   Titles
+===================================================== */
+
+
+h1,
+h2,
+h3 {
+
+    font-weight:700;
+
+    color:#0b1f33;
+
+}
+
+
+
+/* =====================================================
+   Footer
+===================================================== */
+
+
+.footer {
+
+    text-align:center;
+
+    padding:15px;
+
+    background:white;
+
+    color:#6c757d;
+
+    border-top:1px solid #ddd;
+
+}
+
+
+
+/* =====================================================
+   Login Page
+===================================================== */
+
+
+form {
+
+    max-width:420px;
+
+}
+
+
+
+input {
+
+    width:100%;
+
+    padding:10px;
+
+    border-radius:8px;
+
+    border:1px solid #ccd6e0;
+
+}
+
+
+
+button {
+
+    margin-top:15px;
+
+    padding:10px 25px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:#0b1f33;
+
+    color:white;
+
+    font-weight:600;
+
+}
+
+
+
+button:hover {
+
+    background:#163d63;
+
+}
+
+
+
+/* =====================================================
+   Mobile
+===================================================== */
+
+
+@media(max-width:900px){
+
+
+    .kwetu-navbar {
+
+        flex-direction:column;
+
+        height:auto;
+
+        gap:15px;
+
+        padding:20px;
+
+    }
+
+
+
+    .nav-links {
+
+        flex-wrap:wrap;
+
+        justify-content:center;
+
+    }
+
+
+
+    .user-menu {
+
+        flex-direction:column;
+
+    }
+
+
+}
