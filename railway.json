@@ -4,6 +4,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "gunicorn \"app:create_app()\""
+    "startCommand": "flask --app app:create_app db upgrade && gunicorn \"app:create_app()\""
   }
 }
