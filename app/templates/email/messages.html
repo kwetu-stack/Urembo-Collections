@@ -35,7 +35,6 @@ Latest Gmail Messages
 
     </div>
 
-
     <div class="card shadow-sm">
 
         <div class="card-header bg-primary text-white">
@@ -56,29 +55,17 @@ Latest Gmail Messages
 
                         <tr>
 
-                            <th style="width:60px;">
-                                #
-                            </th>
+                            <th style="width:60px;">#</th>
 
-                            <th style="width:150px;">
-                                Type
-                            </th>
+                            <th style="width:170px;">Type</th>
 
-                            <th style="width:180px;">
-                                Attachment
-                            </th>
+                            <th style="width:220px;">Attachment</th>
 
-                            <th style="width:220px;">
-                                Date
-                            </th>
+                            <th style="width:220px;">Date</th>
 
-                            <th>
-                                From
-                            </th>
+                            <th>From</th>
 
-                            <th>
-                                Subject
-                            </th>
+                            <th>Subject</th>
 
                         </tr>
 
@@ -96,16 +83,16 @@ Latest Gmail Messages
 
                             <td>
 
-                                {% if message.type == "Airtel Report" %}
+                                {% if message.type == "Other" %}
 
-                                    <span class="badge bg-success">
-                                        Airtel Report
+                                    <span class="badge bg-secondary">
+                                        {{ message.type }}
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
-                                        Other
+                                    <span class="badge bg-success">
+                                        {{ message.type }}
                                     </span>
 
                                 {% endif %}
@@ -125,12 +112,6 @@ Latest Gmail Messages
                                     <small class="text-muted">
                                         {{ message.attachment_name }}
                                     </small>
-
-                                {% elif message.type == "Airtel Report" %}
-
-                                    <span class="badge bg-warning text-dark">
-                                        📧 Email Body
-                                    </span>
 
                                 {% else %}
 

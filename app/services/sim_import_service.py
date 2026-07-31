@@ -43,7 +43,11 @@ def clean_string(value):
 
 def import_sim(file_path):
     """
-    Imports a SIM Issuance report.
+    Import a SIM Issuance report.
+
+    Parameters
+    ----------
+    file_path : str | Path
 
     Returns
     -------
@@ -98,7 +102,9 @@ def import_sim(file_path):
 
             sim = SimIssuance(
 
-                dso_id=clean_string(row["dsoid"]),
+                dso_id=clean_string(
+                    row["dsoid"]
+                ),
 
                 sim_serial=serial,
 

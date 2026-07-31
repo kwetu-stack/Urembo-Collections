@@ -1,8 +1,20 @@
+import os
+import base64
 from flask import current_app
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from datetime import datetime
 
 from app.models.email_account import EmailAccount
+
+
+# Search only for Airtel business reports
+GMAIL_REPORT_QUERY = (
+    '"partner performance" '
+    'OR "sim issuance" '
+    'OR "tudor agents" '
+    'OR commission'
+)
 
 
 def get_gmail_service():
@@ -37,9 +49,9 @@ def get_gmail_service():
 
 def get_recent_messages(limit=10):
     """
-    Returns the latest Gmail messages with
-    sender, subject, date, report type
-    and attachment information.
+    Returns Airtel-related Gmail messages with
+    sender, subject, date, report type and
+    attachment information.
     """
 
     service = get_gmail_service()
@@ -49,6 +61,7 @@ def get_recent_messages(limit=10):
 
     response = service.users().messages().list(
         userId="me",
+        q=GMAIL_REPORT_QUERY,
         maxResults=limit
     ).execute()
 
@@ -94,16 +107,6 @@ def get_recent_messages(limit=10):
         sender = headers.get("From", "")
         subject = headers.get("Subject", "")
 
-        text = f"{sender} {subject}".lower()
-
-        report_type = "Other"
-
-        for report_name, keywords in REPORT_TYPES.items():
-
-            if any(keyword in text for keyword in keywords):
-                report_type = report_name
-                break
-
         has_attachment = False
         attachment_name = ""
         attachment_id = ""
@@ -116,11 +119,24 @@ def get_recent_messages(limit=10):
             body = part.get("body", {})
 
             if filename:
-
                 has_attachment = True
                 attachment_name = filename
                 attachment_id = body.get("attachmentId", "")
+                break
 
+        # Build searchable text after attachment detection.
+        text = (
+            f"{sender} "
+            f"{subject} "
+            f"{attachment_name}"
+        ).lower()
+
+        report_type = "Other"
+
+        for report_name, keywords in REPORT_TYPES.items():
+
+            if any(keyword in text for keyword in keywords):
+                report_type = report_name
                 break
 
         results.append(
@@ -137,3 +153,63 @@ def get_recent_messages(limit=10):
         )
 
     return results
+
+
+def download_attachment(message_id, attachment_id, filename):
+    """
+    Downloads a Gmail attachment and saves it to:
+
+        data/uploads/email_reports/
+
+    Returns the full path of the saved file.
+    """
+
+    service = get_gmail_service()
+
+    if service is None:
+        return None
+
+    attachment = (
+        service.users()
+        .messages()
+        .attachments()
+        .get(
+            userId="me",
+            messageId=message_id,
+            id=attachment_id,
+        )
+        .execute()
+    )
+
+    file_data = base64.urlsafe_b64decode(
+        attachment["data"].encode("UTF-8")
+    )
+
+    upload_folder = os.path.join(
+        current_app.root_path,
+        "..",
+        "data",
+        "uploads",
+        "email_reports",
+    )
+
+    os.makedirs(upload_folder, exist_ok=True)
+
+    # Create a unique filename for each downloaded attachment.
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_filename = os.path.basename(filename).replace(" ", "_")
+    saved_filename = f"{timestamp}_{safe_filename}"
+
+    file_path = os.path.join(
+        upload_folder,
+        saved_filename,
+    )
+
+    with open(file_path, "wb") as f:
+        f.write(file_data)
+
+    return {
+        "success": True,
+        "file_path": os.path.abspath(file_path),
+        "filename": saved_filename,
+    }

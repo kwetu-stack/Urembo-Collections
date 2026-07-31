@@ -18,6 +18,7 @@ from app.models.email_account import EmailAccount
 
 from app.email_intelligence.oauth_service import save_credentials
 from app.email_intelligence.gmail_service import get_recent_messages
+from app.email_intelligence.sync_service import sync_gmail_reports
 
 load_dotenv()
 
@@ -154,3 +155,17 @@ def messages():
         "email/messages.html",
         messages=messages,
     )
+@email_bp.route("/sync")
+def sync():
+
+    if not session.get("logged_in"):
+        return redirect(
+            url_for("auth.login")
+        )
+
+    summary = sync_gmail_reports()
+
+    return render_template(
+        "email/sync_results.html",
+        summary=summary,
+    )   

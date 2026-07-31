@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+Gmail Sync Results
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-success text-white">
+
+            Gmail Synchronization
+
+        </div>
+
+        <div class="card-body">
+
+            <h4 class="mb-4">
+                Synchronization Summary
+            </h4>
+
+            <table class="table">
+
+                <tr>
+                    <th>Success</th>
+                    <td>{{ summary.success }}</td>
+                </tr>
+
+                <tr>
+                    <th>Messages Found</th>
+                    <td>{{ summary.messages_found }}</td>
+                </tr>
+
+                <tr>
+                    <th>Downloaded</th>
+                    <td>{{ summary.downloaded }}</td>
+                </tr>
+
+                <tr>
+                    <th>Imported</th>
+                    <td>{{ summary.imported }}</td>
+                </tr>
+
+                <tr>
+                    <th>Skipped</th>
+                    <td>{{ summary.skipped }}</td>
+                </tr>
+
+                <tr>
+                    <th>Errors</th>
+                    <td>{{ summary.errors }}</td>
+                </tr>
+
+            </table>
+
+            <a href="{{ url_for('email.dashboard') }}"
+               class="btn btn-primary">
+
+                Back to Email Dashboard
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
