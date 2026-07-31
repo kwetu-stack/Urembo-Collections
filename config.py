@@ -23,6 +23,19 @@ def get_database_url():
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "kwetu-urembo-secret-key")
 
+    GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID")
+
+    GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
+
+    GMAIL_REDIRECT_URI = os.getenv(
+        "GMAIL_REDIRECT_URI",
+        "http://127.0.0.1:5000/email/oauth2callback"
+    )
+
+    GMAIL_SCOPES = [
+        "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+
     SQLALCHEMY_DATABASE_URI = get_database_url()
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False

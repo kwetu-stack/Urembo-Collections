@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -37,6 +38,7 @@ def create_app():
     from app.agents.routes import agents_bp
     from app.sim_issuance.routes import sim_bp
     from app.performance.routes import performance_bp
+    from app.email_intelligence.routes import email_bp
 
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -44,5 +46,6 @@ def create_app():
     app.register_blueprint(agents_bp)
     app.register_blueprint(sim_bp)
     app.register_blueprint(performance_bp)
+    app.register_blueprint(email_bp)
 
     return app

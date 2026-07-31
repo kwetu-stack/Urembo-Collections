@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}
+Email Intelligence
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-1">
+                📧 Email Intelligence
+            </h2>
+
+            <p class="text-muted mb-0">
+                Automatically retrieve Airtel reports from Gmail and update the Distributor Intelligence Platform.
+            </p>
+        </div>
+
+        <div>
+
+            <a href="{{ url_for('email.connect_gmail') }}"
+               class="btn btn-success me-2">
+                Connect Gmail
+            </a>
+
+            <a href="{{ url_for('email.messages') }}"
+               class="btn btn-primary me-2">
+                View Emails
+            </a>
+
+            <button class="btn btn-outline-secondary" disabled>
+                Sync Gmail
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="row">
+
+        <!-- Connection Status -->
+
+        <div class="col-md-3">
+
+            <div class="card shadow-sm mb-3">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Connection Status
+                    </small>
+
+                    {% if account %}
+
+                    <h4 class="mt-2 text-success">
+                        Connected
+                    </h4>
+
+                    {% else %}
+
+                    <h4 class="mt-2 text-danger">
+                        Not Connected
+                    </h4>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Gmail -->
+
+        <div class="col-md-3">
+
+            <div class="card shadow-sm mb-3">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Connected Gmail
+                    </small>
+
+                    <h5 class="mt-2">
+
+                        {% if account %}
+
+                            {{ account.email }}
+
+                        {% else %}
+
+                            —
+
+                        {% endif %}
+
+                    </h5>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Last Sync -->
+
+        <div class="col-md-3">
+
+            <div class="card shadow-sm mb-3">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Last Synchronization
+                    </small>
+
+                    <h6 class="mt-2">
+
+                        {% if account and account.last_sync %}
+
+                            {{ account.last_sync.strftime("%d %b %Y %H:%M") }}
+
+                        {% else %}
+
+                            Never
+
+                        {% endif %}
+
+                    </h6>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Imported Reports -->
+
+        <div class="col-md-3">
+
+            <div class="card shadow-sm mb-3">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Reports Imported
+                    </small>
+
+                    <h2 class="text-primary">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="row mt-3">
+
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm">
+
+                <div class="card-header bg-primary text-white">
+
+                    Latest Airtel Reports
+
+                </div>
+
+                <div class="card-body">
+
+                    <table class="table table-striped table-hover">
+
+                        <thead>
+
+                            <tr>
+                                <th>Date</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            <tr>
+
+                                <td colspan="3"
+                                    class="text-center text-muted">
+
+                                    No Airtel reports downloaded yet.
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg-4">
+
+            <div class="card shadow-sm mb-3">
+
+                <div class="card-header">
+
+                    Gmail Summary
+
+                </div>
+
+                <div class="card-body">
+
+                    <p class="mb-2">
+                        <strong>Unread Airtel Reports</strong>
+                    </p>
+
+                    <h2 class="text-danger">
+                        0
+                    </h2>
+
+                    <hr>
+
+                    <p class="mb-2">
+                        <strong>Downloaded Reports</strong>
+                    </p>
+
+                    <h2 class="text-success">
+                        0
+                    </h2>
+
+                    <hr>
+
+                    <p class="mb-0">
+                        Automatic synchronization will be available in the next phase.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
