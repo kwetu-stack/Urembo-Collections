@@ -22,7 +22,8 @@ from app.email_intelligence.sync_service import sync_gmail_reports
 
 load_dotenv()
 
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+if os.getenv("FLASK_DEBUG") == "1":
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 email_bp = Blueprint(
     "email",
@@ -31,7 +32,34 @@ email_bp = Blueprint(
 )
 
 
+def get_gmail_redirect_uri():
+    configured_uri = current_app.config.get("GMAIL_REDIRECT_URI")
+
+    if configured_uri:
+        return configured_uri
+
+    return url_for(
+        "email.oauth2callback",
+        _external=True,
+    )
+
+
+def require_gmail_oauth_config():
+    missing = [
+        key for key in ("GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET")
+        if not current_app.config.get(key)
+    ]
+
+    if missing:
+        raise RuntimeError(
+            "Missing Gmail OAuth environment variable(s): "
+            + ", ".join(missing)
+        )
+
+
 def create_flow(state=None):
+
+    require_gmail_oauth_config()
 
     flow = Flow.from_client_config(
         {
@@ -47,9 +75,7 @@ def create_flow(state=None):
         autogenerate_code_verifier=True,
     )
 
-    flow.redirect_uri = current_app.config[
-        "GMAIL_REDIRECT_URI"
-    ]
+    flow.redirect_uri = get_gmail_redirect_uri()
 
     return flow
 

@@ -27,10 +27,7 @@ class Config:
 
     GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
 
-    GMAIL_REDIRECT_URI = os.getenv(
-        "GMAIL_REDIRECT_URI",
-        "http://127.0.0.1:5000/email/oauth2callback"
-    )
+    GMAIL_REDIRECT_URI = os.getenv("GMAIL_REDIRECT_URI")
 
     GMAIL_SCOPES = [
         "https://www.googleapis.com/auth/gmail.readonly"
