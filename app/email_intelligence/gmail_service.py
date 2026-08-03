@@ -111,18 +111,48 @@ def get_recent_messages(limit=10):
         attachment_name = ""
         attachment_id = ""
 
+        def find_attachment(parts):
+            """
+            Recursively search Gmail MIME parts
+            for the first attachment.
+            """
+
+            if not parts:
+                return None
+
+            for part in parts:
+
+                filename = part.get("filename", "")
+
+                body = part.get("body", {})
+
+                if filename and body.get("attachmentId"):
+                    return (
+                        filename,
+                        body.get("attachmentId"),
+                    )
+
+                result = find_attachment(
+                    part.get("parts", [])
+                )
+
+                if result:
+                    return result
+
+            return None
+
+
         parts = msg.get("payload", {}).get("parts", [])
 
-        for part in parts:
+        attachment = find_attachment(parts)
 
-            filename = part.get("filename", "")
-            body = part.get("body", {})
+        if attachment:
 
-            if filename:
-                has_attachment = True
-                attachment_name = filename
-                attachment_id = body.get("attachmentId", "")
-                break
+            has_attachment = True
+
+            attachment_name = attachment[0]
+
+            attachment_id = attachment[1]
 
         # Build searchable text after attachment detection.
         text = (
