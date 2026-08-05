@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -15,6 +17,8 @@ from flask import (
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from app.models.email_account import EmailAccount
+from app.models.agent import Agent
+from app.models.sim import SimIssuance
 
 from app.email_intelligence.oauth_service import save_credentials
 from app.email_intelligence.gmail_service import get_recent_messages
@@ -90,10 +94,39 @@ def dashboard():
 
     account = EmailAccount.query.first()
 
+    reports_folder = Path(
+        current_app.root_path
+    ).parent / "data" / "uploads" / "email_reports"
+
+    latest_reports = []
+
+    if reports_folder.exists():
+        report_files = sorted(
+            [
+                path
+                for path in reports_folder.iterdir()
+                if path.is_file()
+            ],
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:10]
+
+        latest_reports = [
+            {
+                "name": path.name,
+                "modified_at": datetime.fromtimestamp(
+                    path.stat().st_mtime
+                ),
+            }
+            for path in report_files
+        ]
+
     return render_template(
-        "email/dashboard.html",
-        account=account,
-    )
+    "email/dashboard.html",
+    account=account,
+    latest_reports=latest_reports,
+    downloaded_reports=len(latest_reports),
+)
 
 
 @email_bp.route("/connect")

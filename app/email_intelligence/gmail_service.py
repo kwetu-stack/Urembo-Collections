@@ -179,6 +179,8 @@ def get_recent_messages(limit=10):
                 "has_attachment": has_attachment,
                 "attachment_name": attachment_name,
                 "attachment_id": attachment_id,
+                
+                "debug": text,
             }
         )
 

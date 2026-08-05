@@ -32,9 +32,10 @@ Email Intelligence
                 View Emails
             </a>
 
-            <button class="btn btn-outline-secondary" disabled>
+            <a href="{{ url_for('email.sync') }}"
+               class="btn btn-outline-secondary">
                 Sync Gmail
-            </button>
+            </a>
 
         </div>
 
@@ -151,11 +152,11 @@ Email Intelligence
                 <div class="card-body">
 
                     <small class="text-muted">
-                        Reports Imported
+                        Downloaded Reports
                     </small>
 
                     <h2 class="text-primary">
-                        0
+                        {{ downloaded_reports }}
                     </h2>
 
                 </div>
@@ -196,16 +197,38 @@ Email Intelligence
 
                         <tbody>
 
-                            <tr>
+                            {% if latest_reports %}
 
-                                <td colspan="3"
-                                    class="text-center text-muted">
+                                {% for report in latest_reports %}
 
-                                    No Airtel reports downloaded yet.
+                                <tr>
+                                    <td>
+                                        {{ report.modified_at.strftime("%d %b %Y %H:%M") }}
+                                    </td>
+                                    <td>
+                                        {{ report.name }}
+                                    </td>
+                                    <td>
+                                        Downloaded
+                                    </td>
+                                </tr>
 
-                                </td>
+                                {% endfor %}
 
-                            </tr>
+                            {% else %}
+
+                                <tr>
+
+                                    <td colspan="3"
+                                        class="text-center text-muted">
+
+                                        No Airtel reports downloaded yet.
+
+                                    </td>
+
+                                </tr>
+
+                            {% endif %}
 
                         </tbody>
 
@@ -246,13 +269,13 @@ Email Intelligence
                     </p>
 
                     <h2 class="text-success">
-                        0
+                        {{ downloaded_reports }}
                     </h2>
 
                     <hr>
 
                     <p class="mb-0">
-                        Automatic synchronization will be available in the next phase.
+                        Imported database rows: {{ imported_rows }}
                     </p>
 
                 </div>

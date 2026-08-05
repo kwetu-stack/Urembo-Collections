@@ -17,6 +17,10 @@ from app.email_intelligence.gmail_service import (
     download_attachment,
 )
 
+from datetime import datetime
+
+from app import db
+from app.models.email_account import EmailAccount
 from app.services.agents_import_service import import_agents
 from app.services.sim_import_service import import_sim
 
@@ -103,11 +107,20 @@ def sync_gmail_reports():
             #     imported += import_result["imported"]
             #     skipped += import_result["skipped"]
 
+            else:
+                skipped += 1
+
         except Exception as e:
 
             print(f"Sync Error: {e}")
 
             errors += 1
+
+    account = EmailAccount.query.first()
+
+    if account:
+        account.last_sync = datetime.utcnow()
+        db.session.commit()
 
     return {
         "success": True,
