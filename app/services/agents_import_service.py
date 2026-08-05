@@ -4,7 +4,7 @@ import pandas as pd
 
 from app import db
 from app.models.agent import Agent
-
+from app.services.import_history_service import log_import
 
 REQUIRED_COLUMNS = [
     "AGENT",
@@ -51,23 +51,12 @@ def import_agents(file_path):
 
     df = pd.read_excel(file_path, header=header_row)
 
-    missing = [
-        col
-        for col in REQUIRED_COLUMNS
-        if col not in df.columns
-    ]
+    missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
 
     if missing:
-        raise ValueError(
-            f"Missing required columns: {', '.join(missing)}"
-        )
+        raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
-    existing_agents = {
-        row[0]
-        for row in db.session.query(
-            Agent.agent_number
-        ).all()
-    }
+    existing_agents = {row[0] for row in db.session.query(Agent.agent_number).all()}
 
     imported = 0
     skipped = 0
@@ -79,10 +68,7 @@ def import_agents(file_path):
 
             agent_number = str(row["AGENT"]).strip()
 
-            if (
-                not agent_number
-                or agent_number.lower() == "nan"
-            ):
+            if not agent_number or agent_number.lower() == "nan":
                 skipped += 1
                 continue
 
@@ -111,7 +97,19 @@ def import_agents(file_path):
             errors += 1
 
     try:
+        history = log_import(
+            report_type="TUDOR AGENTS",
+            filename=file_path.name,
+            imported=imported,
+            skipped=skipped,
+            errors=errors,
+            status="Success",
+        )
+
+        db.session.add(history)
+
         db.session.commit()
+
     except Exception:
         db.session.rollback()
         raise
