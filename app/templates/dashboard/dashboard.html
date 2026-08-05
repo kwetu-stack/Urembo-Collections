@@ -8,15 +8,22 @@ Executive Dashboard
 
 <div class="container-fluid">
 
-{% if report %}
-
 <h2 class="mb-1">Executive Dashboard</h2>
 
+{% if report %}
 <p class="text-muted mb-4">
-Latest Performance Report
-—
+Latest Performance Report —
 {{ report.report_date }}
 </p>
+{% else %}
+<p class="text-muted mb-4">
+Waiting for the first Partner Performance report from Gmail.
+</p>
+{% endif %}
+
+<!-- =======================================================
+     Operational Metrics (Always Visible)
+======================================================= -->
 
 <div class="row mb-4">
 
@@ -58,6 +65,12 @@ Latest Performance Report
 
 </div>
 
+<!-- =======================================================
+     Performance Section
+======================================================= -->
+
+{% if report %}
+
 <div class="row mb-4">
 
     <div class="col-md-3 mb-3">
@@ -85,16 +98,22 @@ Latest Performance Report
     </div>
 
     <div class="col-md-3 mb-3">
-        <div class="card-body text-center card shadow-sm">
-            <h3>{{ report.back_margin_rate }}%</h3>
-            <small>Back Margin</small>
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h3>{{ report.back_margin_rate }}%</h3>
+                <small>Back Margin</small>
+            </div>
         </div>
     </div>
 
     <div class="col-md-3 mb-3">
-        <div class="card-body text-center card shadow-sm">
-            <h3>KES {{ "{:,.0f}".format(report.projected_commission) }}</h3>
-            <small>Projected Commission</small>
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h3>
+                    KES {{ "{:,.0f}".format(report.projected_commission) }}
+                </h3>
+                <small>Projected Commission</small>
+            </div>
         </div>
     </div>
 
@@ -154,23 +173,37 @@ Latest Performance Report
                 <table class="table table-borderless">
 
                     <tr>
+                        <td>Partner</td>
+                        <td>
+                            <strong>{{ report.partner_name }}</strong>
+                        </td>
+                    </tr>
+
+                    <tr>
                         <td>Primaries Purchased</td>
-                        <td><strong>KES {{ "{:,.0f}".format(report.primaries_purchased) }}</strong></td>
+                        <td>
+                            <strong>
+                                KES {{ "{:,.0f}".format(report.primaries_purchased) }}
+                            </strong>
+                        </td>
                     </tr>
 
                     <tr>
                         <td>Total Airtime</td>
-                        <td><strong>KES {{ "{:,.0f}".format(report.total_airtime) }}</strong></td>
+                        <td>
+                            <strong>
+                                KES {{ "{:,.0f}".format(report.total_airtime) }}
+                            </strong>
+                        </td>
                     </tr>
 
                     <tr>
                         <td>Active Airtel Money Agents</td>
-                        <td><strong>{{ report.active_agents }}/{{ report.total_agents }}</strong></td>
-                    </tr>
-
-                    <tr>
-                        <td>Partner</td>
-                        <td><strong>{{ report.partner_name }}</strong></td>
+                        <td>
+                            <strong>
+                                {{ report.active_agents }}/{{ report.total_agents }}
+                            </strong>
+                        </td>
                     </tr>
 
                 </table>
@@ -185,9 +218,15 @@ Latest Performance Report
 
 {% else %}
 
-<div class="alert alert-warning">
+<div class="alert alert-info shadow-sm">
 
-No performance data available.
+    <strong>Performance dashboard is ready.</strong>
+
+    <br><br>
+
+    No Partner Performance report has been imported yet.
+
+    Click <strong>Sync Gmail</strong> after the synchronization engine is completed to automatically populate the executive KPIs.
 
 </div>
 

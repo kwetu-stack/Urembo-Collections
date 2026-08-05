@@ -7,13 +7,9 @@ from datetime import datetime
 
 from app.models.email_account import EmailAccount
 
-
 # Search only for Airtel business reports
 GMAIL_REPORT_QUERY = (
-    '"partner performance" '
-    'OR "sim issuance" '
-    'OR "tudor agents" '
-    'OR commission'
+    '"partner performance" ' 'OR "sim issuance" ' 'OR "tudor agents" ' "OR commission"
 )
 
 
@@ -34,15 +30,10 @@ def get_gmail_service():
         token_uri=account.token_uri,
         client_id=current_app.config["GMAIL_CLIENT_ID"],
         client_secret=current_app.config["GMAIL_CLIENT_SECRET"],
-        scopes=account.scopes.split(",")
-        if account.scopes else [],
+        scopes=account.scopes.split(",") if account.scopes else [],
     )
 
-    service = build(
-        "gmail",
-        "v1",
-        credentials=credentials
-    )
+    service = build("gmail", "v1", credentials=credentials)
 
     return service
 
@@ -59,11 +50,12 @@ def get_recent_messages(limit=10):
     if service is None:
         return []
 
-    response = service.users().messages().list(
-        userId="me",
-        q=GMAIL_REPORT_QUERY,
-        maxResults=limit
-    ).execute()
+    response = (
+        service.users()
+        .messages()
+        .list(userId="me", q=GMAIL_REPORT_QUERY, maxResults=limit)
+        .execute()
+    )
 
     messages = response.get("messages", [])
 
@@ -75,17 +67,14 @@ def get_recent_messages(limit=10):
             "gross adds",
             "back margin",
         ],
-
         "SIM Issuance": [
             "sim issuance",
             "utilization",
             "sim kits billing",
         ],
-
         "TUDOR AGENTS": [
             "tudor agents",
         ],
-
         "Commission": [
             "commission",
         ],
@@ -93,11 +82,16 @@ def get_recent_messages(limit=10):
 
     for message in messages:
 
-        msg = service.users().messages().get(
-            userId="me",
-            id=message["id"],
-            format="full",
-        ).execute()
+        msg = (
+            service.users()
+            .messages()
+            .get(
+                userId="me",
+                id=message["id"],
+                format="full",
+            )
+            .execute()
+        )
 
         headers = {}
 
@@ -123,7 +117,6 @@ def get_recent_messages(limit=10):
             for part in parts:
 
                 filename = part.get("filename", "")
-
                 body = part.get("body", {})
 
                 if filename and body.get("attachmentId"):
@@ -132,39 +125,72 @@ def get_recent_messages(limit=10):
                         body.get("attachmentId"),
                     )
 
-                result = find_attachment(
-                    part.get("parts", [])
-                )
+                result = find_attachment(part.get("parts", []))
 
                 if result:
                     return result
 
             return None
 
+        def extract_text(parts):
+            """
+            Recursively extract the plain text body
+            from a Gmail message.
+            """
+
+            if not parts:
+                return ""
+
+            for part in parts:
+
+                mime_type = part.get("mimeType", "")
+                body = part.get("body", {})
+                data = body.get("data")
+
+                if mime_type == "text/plain" and data:
+                    try:
+                        return base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                            "utf-8",
+                            errors="ignore",
+                        )
+                    except Exception:
+                        return ""
+
+                text = extract_text(part.get("parts", []))
+
+                if text:
+                    return text
+
+            return ""
 
         parts = msg.get("payload", {}).get("parts", [])
-
         attachment = find_attachment(parts)
+        email_body = extract_text(parts)
+
+        if not email_body:
+            payload = msg.get("payload", {})
+            data = payload.get("body", {}).get("data")
+
+            if data:
+                try:
+                    email_body = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                        "utf-8",
+                        errors="ignore",
+                    )
+                except Exception:
+                    email_body = ""
 
         if attachment:
-
             has_attachment = True
-
             attachment_name = attachment[0]
-
             attachment_id = attachment[1]
 
         # Build searchable text after attachment detection.
-        text = (
-            f"{sender} "
-            f"{subject} "
-            f"{attachment_name}"
-        ).lower()
+        text = (f"{sender} " f"{subject} " f"{attachment_name}").lower()
 
         report_type = "Other"
 
         for report_name, keywords in REPORT_TYPES.items():
-
             if any(keyword in text for keyword in keywords):
                 report_type = report_name
                 break
@@ -179,7 +205,7 @@ def get_recent_messages(limit=10):
                 "has_attachment": has_attachment,
                 "attachment_name": attachment_name,
                 "attachment_id": attachment_id,
-                
+                "body": email_body,
                 "debug": text,
             }
         )
@@ -213,9 +239,7 @@ def download_attachment(message_id, attachment_id, filename):
         .execute()
     )
 
-    file_data = base64.urlsafe_b64decode(
-        attachment["data"].encode("UTF-8")
-    )
+    file_data = base64.urlsafe_b64decode(attachment["data"].encode("UTF-8"))
 
     upload_folder = os.path.join(
         current_app.root_path,
