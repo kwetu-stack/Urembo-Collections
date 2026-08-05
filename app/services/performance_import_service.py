@@ -21,12 +21,7 @@ def clean_number(value):
     if value is None:
         return None
 
-    value = (
-        str(value)
-        .replace(",", "")
-        .replace("%", "")
-        .strip()
-    )
+    value = str(value).replace(",", "").replace("%", "").strip()
 
     if value == "":
         return None
@@ -49,6 +44,8 @@ def extract(pattern, text, flags=re.IGNORECASE):
         return match.group(1).strip()
 
     return None
+
+
 def import_performance(email_text):
     """
     Import a Partner Performance email into
@@ -77,10 +74,7 @@ def import_performance(email_text):
 
             try:
 
-                report_date = datetime.strptime(
-                    match.group(1),
-                    "%dth %B %Y"
-                ).date()
+                report_date = datetime.strptime(match.group(1), "%dth %B %Y").date()
 
             except Exception:
                 pass
@@ -109,118 +103,91 @@ def import_performance(email_text):
         # -----------------------------------------
 
         gross_adds = clean_number(
-
             extract(
                 r"Partner Gross Adds\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         sim_billing = clean_number(
-
             extract(
                 r"Sim Kits Billing\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         active_agents_percent = clean_number(
-
             extract(
                 r"% Active Agents\s+([\d\.]+%)",
                 email_text,
             )
-
         )
 
         back_margin_rate = clean_number(
-
             extract(
                 r"Back Margin Rate\s+([\d\.]+%)",
                 email_text,
             )
-
         )
 
         primaries_purchased = clean_number(
-
             extract(
                 r"Primaries Purchased\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         agent_led_airtime = clean_number(
-
             extract(
                 r"Agent Led Airtime.*?\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         retailer_self_recharges = clean_number(
-
             extract(
                 r"Retailer Influenced Self Recharges\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         total_airtime = clean_number(
-
             extract(
                 r"Total Airtime\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         projected_commission = clean_number(
-
             extract(
                 r"Projected Back Margin Commission\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         total_agents = clean_number(
-
             extract(
                 r"Total Agents in Cluster\s+([\d,]+)",
                 email_text,
             )
-
         )
 
         active_agents = clean_number(
-
             extract(
                 r"Agents Served with 1K \+ & 5TXN\s+([\d,]+)",
                 email_text,
             )
-
         )
-                # -----------------------------------------
+
+        # -----------------------------------------
         # Create or Update Performance Snapshot
         # -----------------------------------------
 
-        snapshot = (
-            PerformanceSnapshot.query
-            .filter_by(report_date=report_date)
-            .first()
-        )
+        snapshot = PerformanceSnapshot.query.filter_by(report_date=report_date).first()
 
         if snapshot is None:
 
-            snapshot = PerformanceSnapshot(
-                report_date=report_date
-            )
+            snapshot = PerformanceSnapshot(report_date=report_date)
 
             db.session.add(snapshot)
 
@@ -289,13 +256,8 @@ def import_performance(email_text):
         raise
 
     return {
-
         "rows": 1,
-
         "imported": imported,
-
         "skipped": skipped,
-
         "errors": errors,
-
     }
