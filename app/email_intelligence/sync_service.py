@@ -40,7 +40,7 @@ from app.services.performance_import_service import (
 
 def sync_gmail_reports():
     """
-    Synchronize all Airtel reports from Gmail.
+    Synchronize all supported Airtel reports.
     """
 
     messages = get_recent_messages(50)
@@ -53,17 +53,14 @@ def sync_gmail_reports():
     for message in messages:
 
         try:
-
-            # ------------------------------------------
-            # PARTNER PERFORMANCE
-            # (No attachment)
-            # ------------------------------------------
+            # --------------------------------------------------
+            # Partner Performance
+            # (Imported directly from the email body)
+            # --------------------------------------------------
 
             if message["type"] == "Partner Performance":
 
-                result = import_performance(
-                    message["body"]
-                )
+                result = import_performance(message["body"])
 
                 imported += result["imported"]
                 skipped += result["skipped"]
@@ -71,12 +68,14 @@ def sync_gmail_reports():
 
                 continue
 
-            # ------------------------------------------
-            # Everything below requires attachments
-            # ------------------------------------------
+            # --------------------------------------------------
+            # Remaining reports require attachments
+            # --------------------------------------------------
 
             if not message["has_attachment"]:
+
                 skipped += 1
+
                 continue
 
             download = download_attachment(
@@ -85,48 +84,60 @@ def sync_gmail_reports():
                 message["attachment_name"],
             )
 
-            if not download["success"]:
+            if not download:
+
                 errors += 1
+
+                continue
+
+            if not download["success"]:
+
+                errors += 1
+
                 continue
 
             downloaded += 1
 
-            # ------------------------------------------
+            # --------------------------------------------------
             # TUDOR AGENTS
-            # ------------------------------------------
+            # --------------------------------------------------
 
             if message["type"] == "TUDOR AGENTS":
-                
 
-                result = import_agents(
-                    download["file_path"]
-                )
+                result = import_agents(download["file_path"])
 
                 imported += result["imported"]
                 skipped += result["skipped"]
+                errors += result["errors"]
 
-            # ------------------------------------------
+            # --------------------------------------------------
             # SIM ISSUANCE
-            # ------------------------------------------
+            # --------------------------------------------------
 
             elif message["type"] == "SIM Issuance":
 
-                result = import_sim(
-                    download["file_path"]
-                )
+                result = import_sim(download["file_path"])
 
                 imported += result["imported"]
                 skipped += result["skipped"]
+                errors += result["errors"]
+
+            # --------------------------------------------------
+            # Unsupported Report
+            # --------------------------------------------------
 
             else:
 
                 skipped += 1
-
         except Exception as e:
 
             print(f"SYNC ERROR: {e}")
 
             errors += 1
+
+    # --------------------------------------------------
+    # Update Last Synchronization Time
+    # --------------------------------------------------
 
     account = EmailAccount.query.first()
 
@@ -135,6 +146,10 @@ def sync_gmail_reports():
         account.last_sync = datetime.utcnow()
 
         db.session.commit()
+
+    # --------------------------------------------------
+    # Synchronization Summary
+    # --------------------------------------------------
 
     return {
         "success": True,
