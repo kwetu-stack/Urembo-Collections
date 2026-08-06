@@ -101,13 +101,13 @@ def import_performance(email_text):
         # --------------------------------------------------
 
         partner_name = extract(
-            r"\d{4}\s+([A-Z0-9\s&\-\(\)]+?),\s*Dear\s+Partner",
+            r"^([A-Z0-9\s&\-\(\)]+?),\s*Dear\s+Partner",
             email_text,
+            flags=re.IGNORECASE | re.MULTILINE,
         )
 
         if partner_name:
             partner_name = partner_name.title()
-
         else:
             partner_name = "Unknown Partner"
 
@@ -129,28 +129,28 @@ def import_performance(email_text):
 
         gross_adds = clean_number(
             extract(
-                r"Partner\s+Gross\s+Adds\s*([\d,]+)",
+                r"Partner\s+Gross\s+Adds\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         sim_billing = clean_number(
             extract(
-                r"Sim\s+Kits\s+Billing\s*([\d,]+)",
+                r"Sim\s+Kits\s+Billing\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         active_agents_percent = clean_number(
             extract(
-                r"%\s*Active\s+Agents\s*([\d\.]+%)",
+                r"%?\s*Active\s+Agents\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         back_margin_rate = clean_number(
             extract(
-                r"Back\s+Margin\s+Rate\s*([\d\.]+%)",
+                r"Back\s+Margin\s+Rate\s*([\d,\.]+%?)",
                 email_text,
             )
         )
@@ -173,35 +173,35 @@ def import_performance(email_text):
 
         primaries_purchased = clean_number(
             extract(
-                r"Primaries\s+Purchased\s*([\d,]+)",
+                r"Primaries\s+Purchased\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         agent_led_airtime = clean_number(
             extract(
-                r"Agent\s+Led\s+Airtime(?:\s*\(Direct\))?\s*([\d,]+)",
+                r"Agent\s+Led\s+Airtime(?:\s*\(Direct\))?\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         retailer_self_recharges = clean_number(
             extract(
-                r"Retailer\s+Influenced\s+Self\s+Recharges\s*([\d,]+)",
+                r"Retailer\s+Influenced\s+Self\s+Recharges\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         total_airtime = clean_number(
             extract(
-                r"Total\s+Airtime\s*([\d,]+)",
+                r"Total\s+Airt(?:me|r)\s*([\d,\.]+%?)",
                 email_text,
             )
         )
 
         projected_commission = clean_number(
             extract(
-                r"Projected\s+Back\s+Margin\s+Commission\s*([\d,]+)",
+                r"Projected\s+Back\s+Margin\s+Commission\s*([\d,\.]+%?)",
                 email_text,
             )
         )
@@ -289,7 +289,7 @@ def import_performance(email_text):
 
         db.session.commit()
 
-        log_import(
+        history = log_import(
             report_type="Partner Performance",
             filename="Email Body",
             imported=imported,
@@ -297,13 +297,15 @@ def import_performance(email_text):
             errors=errors,
             status="Success",
         )
+        db.session.add(history)
+        db.session.commit()
 
     except Exception as e:
         db.session.rollback()
 
         errors += 1
 
-        log_import(
+        history = log_import(
             report_type="Partner Performance",
             filename="Email Body",
             imported=0,
@@ -311,6 +313,8 @@ def import_performance(email_text):
             errors=errors,
             status=f"Failed: {e}",
         )
+        db.session.add(history)
+        db.session.commit()
 
         raise
 

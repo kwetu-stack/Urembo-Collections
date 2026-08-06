@@ -16,6 +16,8 @@ Import Into Database
 
 from datetime import datetime
 
+from flask import current_app
+
 from app import db
 
 from app.models.email_account import EmailAccount
@@ -43,7 +45,12 @@ def sync_gmail_reports():
     Synchronize all supported Airtel reports.
     """
 
-    messages = get_recent_messages(50)
+    account = EmailAccount.query.first()
+
+    if account and account.last_sync:
+        messages = get_recent_messages(50, after=account.last_sync)
+    else:
+        messages = get_recent_messages(50)
 
     downloaded = 0
     imported = 0
@@ -53,6 +60,14 @@ def sync_gmail_reports():
     for message in messages:
 
         try:
+            current_app.logger.info(
+                "Sync message id=%s subject=%s type=%s has_attachment=%s",
+                message["id"],
+                message["subject"],
+                message["type"],
+                message["has_attachment"],
+            )
+
             # --------------------------------------------------
             # Partner Performance
             # (Imported directly from the email body)

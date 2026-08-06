@@ -16,7 +16,24 @@ from app.models.email_account import EmailAccount
 # --------------------------------------------------
 
 GMAIL_REPORT_QUERY = (
-    '"partner performance" ' 'OR "sim issuance" ' 'OR "tudor agents" ' "OR commission"
+    "subject:(partner performance) OR "
+    "subject:(sim issuance) OR "
+    "subject:(sim insuance) OR "
+    "subject:(tudor agents) OR "
+    "subject:commission"
+)
+
+FALLBACK_GMAIL_REPORT_QUERY = (
+    "subject:(partner performance) OR "
+    "subject:(sim issuance) OR "
+    "subject:(sim insuance) OR "
+    "subject:(tudor agents) OR "
+    "subject:commission OR "
+    "partner performance OR "
+    "sim issuance OR "
+    "sim insuance OR "
+    "tudor agents OR "
+    "commission"
 )
 
 
@@ -56,10 +73,17 @@ def get_gmail_service():
 # --------------------------------------------------
 
 
-def get_recent_messages(limit=10):
+def get_recent_messages(limit=10, after=None):
     """
     Return Airtel-related Gmail messages together with
     report metadata, email body and attachment details.
+
+    Parameters
+    ----------
+    limit : int
+        Maximum number of messages to return.
+    after : datetime.datetime | None
+        Only return messages newer than this timestamp.
     """
 
     service = get_gmail_service()
@@ -67,12 +91,28 @@ def get_recent_messages(limit=10):
     if service is None:
         return []
 
+    query = GMAIL_REPORT_QUERY
+
+    if after is not None:
+        try:
+            after_date = after.strftime("%Y/%m/%d")
+            query = f"({query}) after:{after_date}"
+        except Exception:
+            pass
+
+    current_app.logger.info(
+        "Gmail fetch query=%s after=%s limit=%s",
+        query,
+        getattr(after, "isoformat", lambda: None)(),
+        limit,
+    )
+
     response = (
         service.users()
         .messages()
         .list(
             userId="me",
-            q=GMAIL_REPORT_QUERY,
+            q=query,
             maxResults=limit,
         )
         .execute()
@@ -80,26 +120,61 @@ def get_recent_messages(limit=10):
 
     messages = response.get("messages", [])
 
+    if not messages:
+        fallback_query = FALLBACK_GMAIL_REPORT_QUERY
+
+        if after is not None:
+            try:
+                fallback_query = f"({fallback_query}) after:{after_date}"
+            except Exception:
+                pass
+
+        current_app.logger.info(
+            "Gmail fetch fallback query=%s",
+            fallback_query,
+        )
+
+        response = (
+            service.users()
+            .messages()
+            .list(
+                userId="me",
+                q=fallback_query,
+                maxResults=limit,
+            )
+            .execute()
+        )
+
+        messages = response.get("messages", [])
+
     results = []
 
     REPORT_TYPES = {
         "Partner Performance": [
-            "partner performance",
-            "gross adds",
-            "back margin",
+            r"\bpartner performance\b",
+            r"\bperformance report\b",
+            r"\bgross adds\b",
+            r"\bback margin\b",
         ],
         "SIM Issuance": [
-            "sim issuance",
-            "utilization",
-            "sim kits billing",
+            r"\bsim[\s_-]*issuance\b",
+            r"\bsim[\s_-]*insuance\b",
+            r"\butilization\b",
+            r"\bsim kits billing\b",
         ],
         "TUDOR AGENTS": [
-            "tudor agents",
+            r"\btudor[\s_-]*agents?\b",
+            r"\bagent\s+performance\b",
         ],
         "Commission": [
-            "commission",
+            r"\bcommission\b",
+            r"\bcommissions\b",
         ],
     }
+
+    def normalize_search_text(text):
+        cleaned = re.sub(r"[^\w]+", " ", text or "").lower()
+        return " ".join(cleaned.split())
 
     for message in messages:
 
@@ -221,14 +296,15 @@ def get_recent_messages(limit=10):
 
                     try:
 
-                        return base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                        text = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
                             "utf-8",
                             errors="ignore",
                         )
+                        if text.strip():
+                            return text
 
                     except Exception:
-
-                        return ""
+                        pass
 
                 if mime_type == "text/html" and data:
 
@@ -239,10 +315,12 @@ def get_recent_messages(limit=10):
                             "utf-8",
                             errors="ignore",
                         )
-                        return strip_html(html_text)
+                        html_text = strip_html(html_text)
+                        if html_text.strip():
+                            return html_text
 
                     except Exception:
-                        return ""
+                        pass
 
                 text = extract_text(part.get("parts", []))
 
@@ -274,10 +352,11 @@ def get_recent_messages(limit=10):
 
                 try:
 
-                    email_body = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                    raw_body = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
                         "utf-8",
                         errors="ignore",
                     )
+                    email_body = strip_html(raw_body)
 
                 except Exception:
 
@@ -299,20 +378,33 @@ def get_recent_messages(limit=10):
         # Detect Report Type
         # --------------------------------------------------
 
-        searchable_text = (
-            f"{sender}\n" f"{subject}\n" f"{attachment_name}\n" f"{email_body}"
-        ).lower()
+        searchable_text = normalize_search_text(
+            f"{sender} {subject} {attachment_name} {email_body}"
+        )
 
         report_type = "Other"
 
         for report_name, keywords in REPORT_TYPES.items():
 
-            if any(keyword in searchable_text for keyword in keywords):
+            if any(re.search(keyword, searchable_text) for keyword in keywords):
 
                 report_type = report_name
 
                 break
-                # --------------------------------------------------
+
+        if report_type == "Other" and attachment_name:
+            attachment_name_lower = normalize_search_text(attachment_name)
+
+            if re.search(r"\b(tudor|agent)\b", attachment_name_lower):
+                report_type = "TUDOR AGENTS"
+
+            elif re.search(r"\b(sim|utilization|issuance)\b", attachment_name_lower):
+                report_type = "SIM Issuance"
+
+            elif re.search(r"\bcommission\b", attachment_name_lower):
+                report_type = "Commission"
+
+        # --------------------------------------------------
         # Store Message
         # --------------------------------------------------
 

@@ -4,7 +4,7 @@ import pandas as pd
 
 from app import db
 from app.models.sim import SimIssuance
-
+from app.services.import_history_service import log_import
 
 REQUIRED_COLUMNS = [
     "dsoid",
@@ -62,22 +62,13 @@ def import_sim(file_path):
 
     df = pd.read_excel(file_path)
 
-    missing = [
-        column
-        for column in REQUIRED_COLUMNS
-        if column not in df.columns
-    ]
+    missing = [column for column in REQUIRED_COLUMNS if column not in df.columns]
 
     if missing:
-        raise ValueError(
-            f"Missing required columns: {', '.join(missing)}"
-        )
+        raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
     existing_serials = {
-        row[0]
-        for row in db.session.query(
-            SimIssuance.sim_serial
-        ).all()
+        row[0] for row in db.session.query(SimIssuance.sim_serial).all()
     }
 
     imported = 0
@@ -86,9 +77,7 @@ def import_sim(file_path):
 
     for _, row in df.iterrows():
 
-        serial = clean_string(
-            row["item_serial_number"]
-        )
+        serial = clean_string(row["item_serial_number"])
 
         if not serial:
             skipped += 1
@@ -101,66 +90,25 @@ def import_sim(file_path):
         try:
 
             sim = SimIssuance(
-
-                dso_id=clean_string(
-                    row["dsoid"]
-                ),
-
+                dso_id=clean_string(row["dsoid"]),
                 sim_serial=serial,
-
-                distributor_name=clean_string(
-                    row["distributorname"]
-                ),
-
-                order_date=clean_string(
-                    row["orderdate"]
-                ),
-
-                email=clean_string(
-                    row["EMAIL"]
-                ),
-
-                order_reference=clean_string(
-                    row["orderheadernum"]
-                ),
-
-                kyc_msisdn=clean_string(
-                    row["kyc_msisdn"]
-                ),
-
-                served_msisdn=clean_string(
-                    row["servedmsisdn"]
-                ),
-
-                kyc_created_on=clean_string(
-                    row["kyc_createdon"]
-                ),
-
-                activation_time=clean_string(
-                    row["Activation_Time"]
-                ),
-
-                device_technology=clean_string(
-                    row["devicetechnology"]
-                ),
-
+                distributor_name=clean_string(row["distributorname"]),
+                order_date=clean_string(row["orderdate"]),
+                email=clean_string(row["EMAIL"]),
+                order_reference=clean_string(row["orderheadernum"]),
+                kyc_msisdn=clean_string(row["kyc_msisdn"]),
+                served_msisdn=clean_string(row["servedmsisdn"]),
+                kyc_created_on=clean_string(row["kyc_createdon"]),
+                activation_time=clean_string(row["Activation_Time"]),
+                device_technology=clean_string(row["devicetechnology"]),
                 recharge_amount=(
                     float(row["rechargeamount"])
                     if pd.notna(row["rechargeamount"])
                     else 0
                 ),
-
-                retailer_msisdn=clean_string(
-                    row["retailer_msisdn"]
-                ),
-
-                promoter_msisdn=clean_string(
-                    row["promotermsisdn"]
-                ),
-
-                zone_name=clean_string(
-                    row["zone_name"]
-                ),
+                retailer_msisdn=clean_string(row["retailer_msisdn"]),
+                promoter_msisdn=clean_string(row["promotermsisdn"]),
+                zone_name=clean_string(row["zone_name"]),
             )
 
             db.session.add(sim)
@@ -174,11 +122,31 @@ def import_sim(file_path):
 
     try:
 
+        history = log_import(
+            report_type="SIM Issuance",
+            filename=file_path.name,
+            imported=imported,
+            skipped=skipped,
+            errors=errors,
+            status="Success",
+        )
+        db.session.add(history)
         db.session.commit()
 
     except Exception:
 
         db.session.rollback()
+
+        history = log_import(
+            report_type="SIM Issuance",
+            filename=file_path.name,
+            imported=imported,
+            skipped=skipped,
+            errors=errors,
+            status="Failed",
+        )
+        db.session.add(history)
+        db.session.commit()
 
         raise
 
