@@ -108,15 +108,14 @@ def get_recent_messages(limit=10, after=None):
     )
 
     response = (
-        service.users()
-        .messages()
-        .list(
-            userId="me",
-            q=query,
-            maxResults=limit,
-        )
-        .execute()
+    service.users()
+    .messages()
+    .list(
+        userId="me",
+        maxResults=limit,
     )
+    .execute()
+)
 
     messages = response.get("messages", [])
 
