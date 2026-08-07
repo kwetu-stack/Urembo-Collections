@@ -19,7 +19,7 @@ from app.email_intelligence.report_classifier import is_supported_report
 from app.services.agents_import_service import import_agents
 from app.services.sim_import_service import import_sim
 from app.services.performance_import_service import import_performance
-from app.services.email_report_storage import save_email_report
+
 
 
 def _already_processed(message_id):
