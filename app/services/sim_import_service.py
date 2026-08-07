@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -11,12 +12,12 @@ REQUIRED_COLUMNS = [
     "item_serial_number",
     "distributorname",
     "orderdate",
-    "EMAIL",
+    "email",
     "orderheadernum",
     "kyc_msisdn",
     "servedmsisdn",
     "kyc_createdon",
-    "Activation_Time",
+    "activation_time",
     "devicetechnology",
     "rechargeamount",
     "retailer_msisdn",
@@ -26,14 +27,13 @@ REQUIRED_COLUMNS = [
 
 
 def clean_string(value):
-    """
-    Convert Excel values safely to strings.
-    """
-
     if pd.isna(value):
         return None
 
     text = str(value).strip()
+
+    if text.lower() == "nan":
+        return None
 
     if text.endswith(".0"):
         text = text[:-2]
@@ -41,91 +41,147 @@ def clean_string(value):
     return text
 
 
-def import_sim(file_path):
-    """
-    Import a SIM Issuance report.
-
-    Parameters
-    ----------
-    file_path : str | Path
-
-    Returns
-    -------
-    dict
-        Import summary.
-    """
+def _resolve_source(file_path=None, file_data=None, filename="sim_report.xlsx"):
+    if file_data is not None:
+        return BytesIO(file_data), filename
 
     file_path = Path(file_path)
 
     if not file_path.exists():
         raise FileNotFoundError(file_path)
 
-    df = pd.read_excel(file_path)
+    return file_path, file_path.name
+
+
+def _normalize_columns(df):
+    rename_map = {}
+
+    for column in df.columns:
+        rename_map[column] = str(column).strip().lower()
+
+    df = df.rename(columns=rename_map)
+
+    alias_map = {
+        "activation_time": "Activation_Time".lower(),
+        "item serial number": "item_serial_number",
+        "distributor name": "distributorname",
+        "order date": "orderdate",
+        "order header num": "orderheadernum",
+    }
+
+    for old_name, new_name in alias_map.items():
+        if old_name in df.columns and new_name not in df.columns:
+            df = df.rename(columns={old_name: new_name})
+
+    return df
+
+
+def _detect_header_row(source):
+    raw_df = pd.read_excel(source, header=None)
+
+    for i in range(min(15, len(raw_df))):
+        row_values = [
+            str(value).strip().lower()
+            for value in raw_df.iloc[i].tolist()
+            if str(value).strip().lower() != "nan"
+        ]
+
+        if "item_serial_number" in row_values or "item serial number" in row_values:
+            return i
+
+        joined = " ".join(row_values)
+
+        if "item_serial" in joined or "sim serial" in joined:
+            return i
+
+    return 0
+
+
+def _row_payload(row):
+    return {
+        "dso_id": clean_string(row.get("dsoid")),
+        "distributor_name": clean_string(row.get("distributorname")),
+        "order_date": clean_string(row.get("orderdate")),
+        "email": clean_string(row.get("email")),
+        "order_reference": clean_string(row.get("orderheadernum")),
+        "kyc_msisdn": clean_string(row.get("kyc_msisdn")),
+        "served_msisdn": clean_string(row.get("servedmsisdn")),
+        "kyc_created_on": clean_string(row.get("kyc_createdon")),
+        "activation_time": clean_string(row.get("activation_time")),
+        "device_technology": clean_string(row.get("devicetechnology")),
+        "recharge_amount": (
+            float(row["rechargeamount"])
+            if pd.notna(row.get("rechargeamount"))
+            else 0
+        ),
+        "retailer_msisdn": clean_string(row.get("retailer_msisdn")),
+        "promoter_msisdn": clean_string(row.get("promotermsisdn")),
+        "zone_name": clean_string(row.get("zone_name")),
+    }
+
+
+def import_sim(file_path=None, file_data=None, filename=None):
+    source, resolved_filename = _resolve_source(
+        file_path=file_path,
+        file_data=file_data,
+        filename=filename or "sim_report.xlsx",
+    )
+
+    header_row = _detect_header_row(source)
+
+    if isinstance(source, BytesIO):
+        source.seek(0)
+
+    df = pd.read_excel(source, header=header_row)
+    df = _normalize_columns(df)
 
     missing = [column for column in REQUIRED_COLUMNS if column not in df.columns]
 
     if missing:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
-    existing_serials = {
-        row[0] for row in db.session.query(SimIssuance.sim_serial).all()
+    existing_sims = {
+        sim.sim_serial: sim
+        for sim in SimIssuance.query.all()
     }
 
     imported = 0
+    updated = 0
     skipped = 0
     errors = 0
 
     for _, row in df.iterrows():
-
-        serial = clean_string(row["item_serial_number"])
+        serial = clean_string(row.get("item_serial_number"))
 
         if not serial:
             skipped += 1
             continue
 
-        if serial in existing_serials:
-            skipped += 1
-            continue
+        payload = _row_payload(row)
 
         try:
+            if serial in existing_sims:
+                sim = existing_sims[serial]
 
-            sim = SimIssuance(
-                dso_id=clean_string(row["dsoid"]),
-                sim_serial=serial,
-                distributor_name=clean_string(row["distributorname"]),
-                order_date=clean_string(row["orderdate"]),
-                email=clean_string(row["EMAIL"]),
-                order_reference=clean_string(row["orderheadernum"]),
-                kyc_msisdn=clean_string(row["kyc_msisdn"]),
-                served_msisdn=clean_string(row["servedmsisdn"]),
-                kyc_created_on=clean_string(row["kyc_createdon"]),
-                activation_time=clean_string(row["Activation_Time"]),
-                device_technology=clean_string(row["devicetechnology"]),
-                recharge_amount=(
-                    float(row["rechargeamount"])
-                    if pd.notna(row["rechargeamount"])
-                    else 0
-                ),
-                retailer_msisdn=clean_string(row["retailer_msisdn"]),
-                promoter_msisdn=clean_string(row["promotermsisdn"]),
-                zone_name=clean_string(row["zone_name"]),
-            )
+                for field, value in payload.items():
+                    if value is not None:
+                        setattr(sim, field, value)
 
-            db.session.add(sim)
-
-            existing_serials.add(serial)
-
-            imported += 1
+                updated += 1
+            else:
+                sim = SimIssuance(sim_serial=serial, **payload)
+                db.session.add(sim)
+                existing_sims[serial] = sim
+                imported += 1
 
         except Exception:
             errors += 1
 
     try:
-
         history = log_import(
             report_type="SIM Issuance",
-            filename=file_path.name,
-            imported=imported,
+            filename=resolved_filename,
+            imported=imported + updated,
             skipped=skipped,
             errors=errors,
             status="Success",
@@ -134,13 +190,12 @@ def import_sim(file_path):
         db.session.commit()
 
     except Exception:
-
         db.session.rollback()
 
         history = log_import(
             report_type="SIM Issuance",
-            filename=file_path.name,
-            imported=imported,
+            filename=resolved_filename,
+            imported=imported + updated,
             skipped=skipped,
             errors=errors,
             status="Failed",
@@ -153,6 +208,7 @@ def import_sim(file_path):
     return {
         "rows": len(df),
         "imported": imported,
+        "updated": updated,
         "skipped": skipped,
         "errors": errors,
     }

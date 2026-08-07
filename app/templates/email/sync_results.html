@@ -40,12 +40,27 @@ Gmail Sync Results
                 </tr>
 
                 <tr>
-                    <th>Imported</th>
+                    <th>Imported (new rows)</th>
                     <td>{{ summary.imported }}</td>
                 </tr>
 
                 <tr>
-                    <th>Skipped</th>
+                    <th>Updated (existing rows)</th>
+                    <td>{{ summary.updated | default(0) }}</td>
+                </tr>
+
+                <tr>
+                    <th>Skipped Messages</th>
+                    <td>{{ summary.skipped_messages | default(0) }}</td>
+                </tr>
+
+                <tr>
+                    <th>Skipped Rows</th>
+                    <td>{{ summary.skipped_rows | default(0) }}</td>
+                </tr>
+
+                <tr>
+                    <th>Skipped (total)</th>
                     <td>{{ summary.skipped }}</td>
                 </tr>
 

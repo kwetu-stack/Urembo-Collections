@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -17,16 +18,27 @@ REQUIRED_COLUMNS = [
     "Agent Status",
 ]
 
+COLUMN_ALIASES = {
+    "AMA 1+": ["AMA 1+", "AMA1+", "AMA 1", "AMA"],
+}
 
-def detect_header_row(file_path):
-    """
-    Automatically locate the Excel header row.
-    """
 
-    raw_df = pd.read_excel(file_path, header=None)
+def _resolve_source(file_path=None, file_data=None, filename="import.xlsx"):
+    if file_data is not None:
+        return BytesIO(file_data), filename
 
-    for i in range(min(10, len(raw_df))):
+    file_path = Path(file_path)
 
+    if not file_path.exists():
+        raise FileNotFoundError(file_path)
+
+    return file_path, file_path.name
+
+
+def detect_header_row(source):
+    raw_df = pd.read_excel(source, header=None)
+
+    for i in range(min(15, len(raw_df))):
         first_cell = str(raw_df.iloc[i, 0]).strip().upper()
 
         if first_cell == "AGENT":
@@ -35,63 +47,84 @@ def detect_header_row(file_path):
     raise Exception("Could not detect the header row.")
 
 
-def import_agents(file_path):
-    """
-    Imports agents from an Excel file.
+def _normalize_columns(df):
+    rename_map = {}
 
-    Returns a summary dictionary.
-    """
+    for required, aliases in COLUMN_ALIASES.items():
+        if required in df.columns:
+            continue
 
-    file_path = Path(file_path)
+        for alias in aliases:
+            if alias in df.columns:
+                rename_map[alias] = required
+                break
 
-    if not file_path.exists():
-        raise FileNotFoundError(file_path)
+    if rename_map:
+        df = df.rename(columns=rename_map)
 
-    header_row = detect_header_row(file_path)
+    return df
 
-    df = pd.read_excel(file_path, header=header_row)
+
+def import_agents(file_path=None, file_data=None, filename=None):
+    source, resolved_filename = _resolve_source(
+        file_path=file_path,
+        file_data=file_data,
+        filename=filename or "TUDOR AGENTS.xlsx",
+    )
+
+    header_row = detect_header_row(source)
+
+    if isinstance(source, BytesIO):
+        source.seek(0)
+
+    df = pd.read_excel(source, header=header_row)
+    df = _normalize_columns(df)
 
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
 
     if missing:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
-    existing_agents = {row[0] for row in db.session.query(Agent.agent_number).all()}
+    existing_agents = {
+        agent.agent_number: agent
+        for agent in Agent.query.all()
+    }
 
     imported = 0
+    updated = 0
     skipped = 0
     errors = 0
 
     for _, row in df.iterrows():
-
         try:
-
             agent_number = str(row["AGENT"]).strip()
 
             if not agent_number or agent_number.lower() == "nan":
                 skipped += 1
                 continue
 
+            payload = {
+                "agent_name": str(row["AGENT NAME"]).strip(),
+                "site": str(row["SITE"]).strip(),
+                "tse": str(row["TSE"]).strip(),
+                "ama": str(row["AMA 1+"]).strip(),
+                "qama": str(row["QAMA"]).strip(),
+                "qdrso": str(row["QDRSO"]).strip(),
+                "status": str(row["Agent Status"]).strip(),
+            }
+
             if agent_number in existing_agents:
-                skipped += 1
-                continue
+                agent = existing_agents[agent_number]
 
-            agent = Agent(
-                agent_number=agent_number,
-                agent_name=str(row["AGENT NAME"]).strip(),
-                site=str(row["SITE"]).strip(),
-                tse=str(row["TSE"]).strip(),
-                ama=str(row["AMA 1+"]).strip(),
-                qama=str(row["QAMA"]).strip(),
-                qdrso=str(row["QDRSO"]).strip(),
-                status=str(row["Agent Status"]).strip(),
-            )
+                for field, value in payload.items():
+                    setattr(agent, field, value)
 
-            db.session.add(agent)
-
-            existing_agents.add(agent_number)
-
-            imported += 1
+                updated += 1
+            else:
+                agent = Agent(agent_number=agent_number, **payload)
+                db.session.add(agent)
+                existing_agents[agent_number] = agent
+                imported += 1
 
         except Exception:
             errors += 1
@@ -99,15 +132,14 @@ def import_agents(file_path):
     try:
         history = log_import(
             report_type="TUDOR AGENTS",
-            filename=file_path.name,
-            imported=imported,
+            filename=resolved_filename,
+            imported=imported + updated,
             skipped=skipped,
             errors=errors,
             status="Success",
         )
 
         db.session.add(history)
-
         db.session.commit()
 
     except Exception:
@@ -117,6 +149,7 @@ def import_agents(file_path):
     return {
         "rows": len(df),
         "imported": imported,
+        "updated": updated,
         "skipped": skipped,
         "errors": errors,
     }
