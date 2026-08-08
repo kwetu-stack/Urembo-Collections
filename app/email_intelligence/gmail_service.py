@@ -16,8 +16,9 @@ from app.email_intelligence.report_classifier import (
     is_supported_report,
 )
 
+
 GMAIL_REPORT_QUERY = (
-    "from:airtel.com ("
+    'from:airtel.com after:2026/07/01 ('
     'subject:"partner performance" OR '
     'subject:"sim issuance" OR '
     'subject:"sim insuance" OR '
@@ -65,14 +66,18 @@ def _list_messages(service, query, limit):
     response = (
         service.users()
         .messages()
-        .list(userId="me", q=query, maxResults=limit)
+        .list(
+            userId="me",
+            q=query,
+            maxResults=limit,
+        )
         .execute()
     )
 
     return response.get("messages", [])
 
 
-def get_recent_messages(limit=10, after=None, airtel_only=True):
+def get_recent_messages(limit=100, after=None, airtel_only=True):
     service = get_gmail_service()
 
     if service is None:
@@ -80,26 +85,25 @@ def get_recent_messages(limit=10, after=None, airtel_only=True):
 
     query = GMAIL_REPORT_QUERY
 
-    if after is not None:
-        try:
-            after_date = after.strftime("%Y/%m/%d")
-            query = f"{query} after:{after_date}"
-        except Exception:
-            pass
-
     current_app.logger.info(
-        "Gmail fetch query=%s after=%s limit=%s",
+        "Gmail fetch query=%s limit=%s",
         query,
-        getattr(after, "isoformat", lambda: None)(),
         limit,
     )
 
-    messages = _list_messages(service, query, limit)
+    messages = _list_messages(
+        service,
+        query,
+        limit,
+    )
 
     results = []
 
     for message in messages:
-        parsed = _parse_message(service, message["id"])
+        parsed = _parse_message(
+            service,
+            message["id"],
+        )
 
         if parsed is None:
             continue
@@ -119,7 +123,11 @@ def _parse_message(service, message_id):
     msg = (
         service.users()
         .messages()
-        .get(userId="me", id=message_id, format="full")
+        .get(
+            userId="me",
+            id=message_id,
+            format="full",
+        )
         .execute()
     )
 
@@ -141,11 +149,15 @@ def _parse_message(service, message_id):
 
         if data:
             try:
-                raw_body = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                raw_body = base64.urlsafe_b64decode(
+                    data.encode("UTF-8")
+                ).decode(
                     "utf-8",
                     errors="ignore",
                 )
+
                 email_body = _strip_html(raw_body)
+
             except Exception:
                 email_body = ""
 
@@ -184,12 +196,17 @@ def _find_attachment(parts):
         if filename and body.get("attachmentId"):
             lower = filename.lower()
 
-            if lower.endswith((".xlsx", ".xls", ".csv")) and is_airtel_attachment(
-                filename
-            ):
-                return (filename, body.get("attachmentId"))
+            if lower.endswith(
+                (".xlsx", ".xls", ".csv")
+            ) and is_airtel_attachment(filename):
+                return (
+                    filename,
+                    body.get("attachmentId"),
+                )
 
-        result = _find_attachment(part.get("parts", []))
+        result = _find_attachment(
+            part.get("parts", [])
+        )
 
         if result:
             return result
@@ -207,14 +224,22 @@ def _strip_html(html):
         html,
         flags=re.IGNORECASE | re.DOTALL,
     )
+
     cleaned = re.sub(
         r"<script.*?>.*?</script>",
         "",
         cleaned,
         flags=re.IGNORECASE | re.DOTALL,
     )
-    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+
+    cleaned = re.sub(
+        r"<[^>]+>",
+        " ",
+        cleaned,
+    )
+
     cleaned = unescape(cleaned)
+
     return " ".join(cleaned.split())
 
 
@@ -229,28 +254,41 @@ def _extract_text(parts):
 
         if mime_type == "text/plain" and data:
             try:
-                text = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                text = base64.urlsafe_b64decode(
+                    data.encode("UTF-8")
+                ).decode(
                     "utf-8",
                     errors="ignore",
                 )
+
                 if text.strip():
                     return text
+
             except Exception:
                 pass
 
         if mime_type == "text/html" and data:
             try:
-                html_text = base64.urlsafe_b64decode(data.encode("UTF-8")).decode(
+                html_text = base64.urlsafe_b64decode(
+                    data.encode("UTF-8")
+                ).decode(
                     "utf-8",
                     errors="ignore",
                 )
-                html_text = _strip_html(html_text)
+
+                html_text = _strip_html(
+                    html_text
+                )
+
                 if html_text.strip():
                     return html_text
+
             except Exception:
                 pass
 
-        text = _extract_text(part.get("parts", []))
+        text = _extract_text(
+            part.get("parts", [])
+        )
 
         if text:
             return text
@@ -258,7 +296,11 @@ def _extract_text(parts):
     return ""
 
 
-def download_attachment(message_id, attachment_id, filename):
+def download_attachment(
+    message_id,
+    attachment_id,
+    filename,
+):
     service = get_gmail_service()
 
     if service is None:
@@ -267,18 +309,27 @@ def download_attachment(message_id, attachment_id, filename):
     if not is_airtel_attachment(filename):
         return {
             "success": False,
-            "error": "Attachment is not a supported Airtel report.",
+            "error": (
+                "Attachment is not a supported "
+                "Airtel report."
+            ),
         }
 
     attachment = (
         service.users()
         .messages()
         .attachments()
-        .get(userId="me", messageId=message_id, id=attachment_id)
+        .get(
+            userId="me",
+            messageId=message_id,
+            id=attachment_id,
+        )
         .execute()
     )
 
-    file_data = base64.urlsafe_b64decode(attachment["data"].encode("UTF-8"))
+    file_data = base64.urlsafe_b64decode(
+        attachment["data"].encode("UTF-8")
+    )
 
     return {
         "success": True,

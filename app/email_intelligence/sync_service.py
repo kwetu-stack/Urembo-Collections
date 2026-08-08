@@ -24,12 +24,20 @@ from app.services.email_report_storage import save_email_report
 
 def _already_processed(message_id):
     return (
-        ProcessedEmailMessage.query.filter_by(gmail_message_id=message_id).first()
+        ProcessedEmailMessage.query.filter_by(
+            gmail_message_id=message_id
+        ).first()
         is not None
     )
 
 
-def _mark_processed(message, imported=0, updated=0, skipped=0, status="Success"):
+def _mark_processed(
+    message,
+    imported=0,
+    updated=0,
+    skipped=0,
+    status="Success",
+):
     record = ProcessedEmailMessage.query.filter_by(
         gmail_message_id=message["id"]
     ).first()
@@ -49,6 +57,7 @@ def _mark_processed(message, imported=0, updated=0, skipped=0, status="Success")
     record.processed_at = datetime.utcnow()
 
     db.session.commit()
+
     return record
 
 
@@ -68,13 +77,12 @@ def sync_gmail_reports(full_sync=False):
             "errors": 0,
         }
 
-    has_processed = ProcessedEmailMessage.query.count() > 0
-    limit = 100 if full_sync or not has_processed else 50
-
-    if account.last_sync and has_processed and not full_sync:
-        messages = get_recent_messages(limit, after=account.last_sync)
-    else:
-        messages = get_recent_messages(limit)
+    # Gmail service now searches Airtel reports from 1 July 2026.
+    # Use a large limit so older reports such as TUDOR AGENTS
+    # are not excluded by the previous 50-message limit.
+    messages = get_recent_messages(
+        limit=500
+    )
 
     downloaded = 0
     imported = 0
@@ -84,7 +92,8 @@ def sync_gmail_reports(full_sync=False):
     errors = 0
 
     for message in messages:
-        if not full_sync and _already_processed(message["id"]):
+
+        if _already_processed(message["id"]):
             skipped_messages += 1
             continue
 
@@ -117,11 +126,17 @@ def sync_gmail_reports(full_sync=False):
                     updated=result.get("updated", 0),
                     skipped=result["skipped"],
                 )
+
                 continue
 
             if not message["has_attachment"]:
                 skipped_messages += 1
-                _mark_processed(message, status="No attachment")
+
+                _mark_processed(
+                    message,
+                    status="No attachment",
+                )
+
                 continue
 
             download = download_attachment(
@@ -132,7 +147,12 @@ def sync_gmail_reports(full_sync=False):
 
             if not download or not download.get("success"):
                 errors += 1
-                _mark_processed(message, status="Download failed")
+
+                _mark_processed(
+                    message,
+                    status="Download failed",
+                )
+
                 continue
 
             downloaded += 1
@@ -141,12 +161,27 @@ def sync_gmail_reports(full_sync=False):
             filename = download["filename"]
 
             if message["type"] == "TUDOR AGENTS":
-                result = import_agents(file_data=file_data, filename=filename)
+
+                result = import_agents(
+                    file_data=file_data,
+                    filename=filename,
+                )
+
             elif message["type"] == "SIM Issuance":
-                result = import_sim(file_data=file_data, filename=filename)
+
+                result = import_sim(
+                    file_data=file_data,
+                    filename=filename,
+                )
+
             else:
                 skipped_messages += 1
-                _mark_processed(message, status="Unsupported attachment")
+
+                _mark_processed(
+                    message,
+                    status="Unsupported attachment",
+                )
+
                 continue
 
             imported += result["imported"]
@@ -175,19 +210,27 @@ def sync_gmail_reports(full_sync=False):
             db.session.commit()
 
         except Exception as exc:
-            current_app.logger.exception("Sync error for message %s", message["id"])
+            current_app.logger.exception(
+                "Sync error for message %s",
+                message["id"],
+            )
+
             print(f"SYNC ERROR: {exc}")
+
             errors += 1
+
             db.session.rollback()
 
             try:
-                _mark_processed(message, status=f"Failed: {exc}")
+                _mark_processed(
+                    message,
+                    status=f"Failed: {exc}",
+                )
             except Exception:
                 db.session.rollback()
 
-    if account:
-        account.last_sync = datetime.utcnow()
-        db.session.commit()
+    account.last_sync = datetime.utcnow()
+    db.session.commit()
 
     return {
         "success": True,
