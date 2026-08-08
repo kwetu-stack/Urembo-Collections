@@ -18,7 +18,7 @@ from app.email_intelligence.report_classifier import (
 
 
 GMAIL_REPORT_QUERY = (
-    'from:airtel.com after:2026/07/01 ('
+    'after:2026/07/01 ('
     'subject:"partner performance" OR '
     'subject:"sim issuance" OR '
     'subject:"sim insuance" OR '
@@ -111,8 +111,7 @@ def get_recent_messages(limit=100, after=None, airtel_only=True):
         if airtel_only and not is_supported_report(parsed["type"]):
             continue
 
-        if airtel_only and not is_airtel_sender(parsed["from"]):
-            continue
+        
 
         results.append(parsed)
 
