@@ -18,15 +18,8 @@ from app.email_intelligence.report_classifier import (
 
 
 GMAIL_REPORT_QUERY = (
-    'after:2026/07/01 ('
-    'subject:"partner performance" OR '
-    'subject:"sim issuance" OR '
-    'subject:"sim insuance" OR '
-    'subject:"tudor agents" OR '
-    'subject:"utilization"'
-    ")"
+    "from:airtel.com after:2026/07/01"
 )
-
 
 def _persist_refreshed_credentials(account, credentials):
     if credentials.token and credentials.token != account.access_token:
