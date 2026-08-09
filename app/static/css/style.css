@@ -1,385 +1,118 @@
-/* =====================================================
-   UREMBO COLLECTIONS™
-   KWETU PARTNERS SaaS Theme
-===================================================== */
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
 
-/* Global */
+    <meta charset="UTF-8">
 
-body {
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-    margin: 0;
+    <title>
+        {% block title %}
+        UREMBO COLLECTIONS
+        {% endblock %}
+    </title>
 
-    background: #f5f7fb;
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+          rel="stylesheet">
 
-    font-family:
-        "Segoe UI",
-        Tahoma,
-        Geneva,
-        Verdana,
-        sans-serif;
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+          rel="stylesheet">
 
-    color: #0b1f33;
+    <!-- Custom CSS -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
 
-}
+</head>
 
+<body>
 
+    <!-- =====================================================
+         TOP NAVIGATION
+    ====================================================== -->
 
-/* =====================================================
-   Top Navigation
-===================================================== */
+    <nav class="kwetu-navbar">
 
+        <div class="brand">
 
-.kwetu-navbar {
+            <strong>
+                UREMBO COLLECTIONS™
+            </strong>
 
-    height: 72px;
+            <small>
+                Distributor Intelligence
+            </small>
 
-    background: #0b1f33;
+        </div>
 
-    color: white;
 
-    display: flex;
+        <div class="nav-links">
 
-    align-items: center;
+            <a href="{{ url_for('dashboard.dashboard') }}">
 
-    justify-content: space-between;
+                <i class="bi bi-speedometer2"></i>
 
-    padding: 0 35px;
+                Dashboard
 
-    box-shadow:
-        0 3px 12px rgba(0,0,0,.15);
+            </a>
 
-}
 
+            <a href="{{ url_for('email.dashboard') }}">
 
+                <i class="bi bi-envelope"></i>
 
-.brand {
+                Email Intelligence
 
-    display: flex;
+            </a>
 
-    flex-direction: column;
+        </div>
 
-    line-height: 1.2;
 
-}
+        <div class="user-menu">
 
+            <span>
+                Welcome Joyce 👋
+            </span>
 
+        </div>
 
-.brand strong {
+    </nav>
 
-    font-size: 1.2rem;
 
-    letter-spacing: .5px;
+    <!-- =====================================================
+         MAIN CONTENT
+    ====================================================== -->
 
-}
+    <main class="main-container">
 
+        {% block content %}
+        {% endblock %}
 
+    </main>
 
-.brand small {
 
-    color: #9fb4c8;
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
 
-    font-size: .85rem;
+    <footer class="footer">
 
-}
+        Powered by Kwetu Partners Ltd. © 2026
 
+    </footer>
 
 
-/* Navigation Links */
+    <!-- Bootstrap JavaScript -->
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
 
-.nav-links {
+    <!-- Custom JavaScript -->
 
-    display: flex;
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
-    gap: 25px;
+</body>
 
-}
-
-
-
-.nav-links a {
-
-    color: white;
-
-    text-decoration: none;
-
-    font-weight: 500;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 7px;
-
-    transition: .2s;
-
-}
-
-
-
-.nav-links a:hover {
-
-    color: #63b3ed;
-
-}
-
-
-
-/* User */
-
-
-.user-menu {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 20px;
-
-}
-
-
-
-.user-menu span {
-
-    color: white;
-
-}
-
-
-
-.user-menu a {
-
-    color: #63b3ed;
-
-    text-decoration: none;
-
-    font-weight: 600;
-
-}
-
-
-
-/* =====================================================
-   Main Container
-===================================================== */
-
-
-.main-container {
-
-    padding: 35px;
-
-    min-height: calc(100vh - 130px);
-
-}
-
-
-
-/* =====================================================
-   Dashboard Cards
-===================================================== */
-
-
-.card {
-
-    border: none;
-
-    border-radius: 16px;
-
-    background: white;
-
-    box-shadow:
-
-        0 5px 18px rgba(0,0,0,.08);
-
-}
-
-
-
-.card:hover {
-
-    transform: translateY(-3px);
-
-    transition: .2s;
-
-}
-
-
-
-/* =====================================================
-   Tables
-===================================================== */
-
-
-.table {
-
-    background:white;
-
-    border-radius:12px;
-
-    overflow:hidden;
-
-}
-
-
-
-.table thead {
-
-    background:#0b1f33;
-
-    color:white;
-
-}
-
-
-
-.table th {
-
-    padding:14px;
-
-}
-
-
-
-.table td {
-
-    padding:12px;
-
-}
-
-
-
-/* =====================================================
-   Titles
-===================================================== */
-
-
-h1,
-h2,
-h3 {
-
-    font-weight:700;
-
-    color:#0b1f33;
-
-}
-
-
-
-/* =====================================================
-   Footer
-===================================================== */
-
-
-.footer {
-
-    text-align:center;
-
-    padding:15px;
-
-    background:white;
-
-    color:#6c757d;
-
-    border-top:1px solid #ddd;
-
-}
-
-
-
-/* =====================================================
-   Login Page
-===================================================== */
-
-
-form {
-
-    max-width:420px;
-
-}
-
-
-
-input {
-
-    width:100%;
-
-    padding:10px;
-
-    border-radius:8px;
-
-    border:1px solid #ccd6e0;
-
-}
-
-
-
-button {
-
-    margin-top:15px;
-
-    padding:10px 25px;
-
-    border:none;
-
-    border-radius:8px;
-
-    background:#0b1f33;
-
-    color:white;
-
-    font-weight:600;
-
-}
-
-
-
-button:hover {
-
-    background:#163d63;
-
-}
-
-
-
-/* =====================================================
-   Mobile
-===================================================== */
-
-
-@media(max-width:900px){
-
-
-    .kwetu-navbar {
-
-        flex-direction:column;
-
-        height:auto;
-
-        gap:15px;
-
-        padding:20px;
-
-    }
-
-
-
-    .nav-links {
-
-        flex-wrap:wrap;
-
-        justify-content:center;
-
-    }
-
-
-
-    .user-menu {
-
-        flex-direction:column;
-
-    }
-
-
-}
+</html>

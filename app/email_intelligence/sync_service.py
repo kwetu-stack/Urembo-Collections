@@ -1,7 +1,7 @@
 """
-Coordinates Gmail synchronization.
+Coordinates Gmail synchronization for Partner Performance reports.
 
-Gmail -> detect Airtel report -> download -> store in PostgreSQL -> import
+Gmail -> detect Partner Performance report -> parse -> store -> dashboard
 """
 
 from datetime import datetime
@@ -11,15 +11,8 @@ from flask import current_app
 from app import db
 from app.models.email_account import EmailAccount
 from app.models.email_report import ProcessedEmailMessage
-from app.email_intelligence.gmail_service import (
-    get_recent_messages,
-    download_attachment,
-)
-from app.email_intelligence.report_classifier import is_supported_report
-from app.services.agents_import_service import import_agents
-from app.services.sim_import_service import import_sim
-from app.services.performance_import_service import import_performance
-from app.services.email_report_storage import save_email_report
+from app.email_intelligence.gmail_service import get_recent_messages
+from app.email_intelligence.performance_reader import import_performance
 
 
 def _already_processed(message_id):
@@ -69,7 +62,6 @@ def sync_gmail_reports(full_sync=False):
             "success": False,
             "error": "No Gmail account connected.",
             "messages_found": 0,
-            "downloaded": 0,
             "imported": 0,
             "updated": 0,
             "skipped_messages": 0,
@@ -77,148 +69,58 @@ def sync_gmail_reports(full_sync=False):
             "errors": 0,
         }
 
-    # Gmail service now searches Airtel reports from 1 July 2026.
-    # Use a large limit so older reports such as TUDOR AGENTS
-    # are not excluded by the previous 50-message limit.
-    messages = get_recent_messages(
-        limit=500
-    )
+    messages = get_recent_messages(limit=500)
 
-    downloaded = 0
     imported = 0
     updated = 0
     skipped_messages = 0
     skipped_rows = 0
     errors = 0
+    performance_messages = 0
 
     for message in messages:
+
+        # Phase 1 only handles Partner Performance reports.
+        if message["type"] != "Partner Performance":
+            continue
+
+        performance_messages += 1
 
         if _already_processed(message["id"]):
             skipped_messages += 1
             continue
 
-        if not is_supported_report(message["type"]):
-            skipped_messages += 1
-            continue
-
         try:
             current_app.logger.info(
-                "Sync message id=%s subject=%s type=%s has_attachment=%s",
+                "Processing performance message id=%s subject=%s",
                 message["id"],
                 message["subject"],
-                message["type"],
-                message["has_attachment"],
             )
 
-            if message["type"] == "Partner Performance":
-                result = import_performance(
-                    message["body"],
-                    subject=message["subject"],
-                )
-
-                imported += result["imported"]
-                updated += result.get("updated", 0)
-                skipped_rows += result["skipped"]
-
-                _mark_processed(
-                    message,
-                    imported=result["imported"],
-                    updated=result.get("updated", 0),
-                    skipped=result["skipped"],
-                )
-
-                continue
-
-            if not message["has_attachment"]:
-                skipped_messages += 1
-
-                _mark_processed(
-                    message,
-                    status="No attachment",
-                )
-
-                continue
-
-            download = download_attachment(
-                message["id"],
-                message["attachment_id"],
-                message["attachment_name"],
+            result = import_performance(
+                message["body"],
+                subject=message["subject"],
             )
-
-            if not download or not download.get("success"):
-                errors += 1
-
-                _mark_processed(
-                    message,
-                    status="Download failed",
-                )
-
-                continue
-
-            downloaded += 1
-
-            file_data = download["file_data"]
-            filename = download["filename"]
-
-            if message["type"] == "TUDOR AGENTS":
-
-                result = import_agents(
-                    file_data=file_data,
-                    filename=filename,
-                )
-
-            elif message["type"] == "SIM Issuance":
-
-                result = import_sim(
-                    file_data=file_data,
-                    filename=filename,
-                )
-
-            else:
-                skipped_messages += 1
-
-                _mark_processed(
-                    message,
-                    status="Unsupported attachment",
-                )
-
-                continue
 
             imported += result["imported"]
             updated += result.get("updated", 0)
             skipped_rows += result["skipped"]
-
-            save_email_report(
-                gmail_message_id=message["id"],
-                subject=message["subject"],
-                report_type=message["type"],
-                filename=filename,
-                file_data=file_data,
-                content_type=download.get("content_type"),
-                rows_imported=result["imported"],
-                rows_updated=result.get("updated", 0),
-                import_status="Imported",
-            )
 
             _mark_processed(
                 message,
                 imported=result["imported"],
                 updated=result.get("updated", 0),
                 skipped=result["skipped"],
+                status="Success",
             )
-
-            db.session.commit()
 
         except Exception as exc:
             current_app.logger.exception(
-                "Sync error for message %s",
+                "Performance sync error for message %s",
                 message["id"],
             )
 
-            print(f"SYNC ERROR: {exc}")
-
             errors += 1
-
             db.session.rollback()
 
             try:
@@ -235,7 +137,7 @@ def sync_gmail_reports(full_sync=False):
     return {
         "success": True,
         "messages_found": len(messages),
-        "downloaded": downloaded,
+        "performance_messages": performance_messages,
         "imported": imported,
         "updated": updated,
         "skipped_messages": skipped_messages,

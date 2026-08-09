@@ -1,35 +1,30 @@
 import os
-from datetime import datetime
 
 from dotenv import load_dotenv
 
 from flask import (
     Blueprint,
     render_template,
-    session,
     redirect,
     url_for,
     current_app,
     request,
-    send_file,
 )
-from io import BytesIO
 
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
-from app import db
 from app.models.email_account import EmailAccount
-from app.models.import_history import ImportHistory
 from app.email_intelligence.oauth_service import save_credentials
-from app.email_intelligence.gmail_service import get_recent_messages
 from app.email_intelligence.sync_service import sync_gmail_reports
-from app.services.email_report_storage import get_latest_reports, get_report_by_id
+
 
 load_dotenv()
 
+
 if os.getenv("FLASK_DEBUG") == "1":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 
 email_bp = Blueprint(
     "email",
@@ -88,29 +83,16 @@ def create_flow(state=None):
 
 @email_bp.route("/")
 def dashboard():
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
-
     account = EmailAccount.query.first()
-    latest_reports = get_latest_reports(10)
-    imported_rows = db.session.query(
-        db.func.coalesce(db.func.sum(ImportHistory.imported), 0)
-    ).scalar()
 
     return render_template(
         "email/dashboard.html",
         account=account,
-        latest_reports=latest_reports,
-        downloaded_reports=len(latest_reports),
-        imported_rows=imported_rows,
     )
 
 
 @email_bp.route("/connect")
 def connect_gmail():
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
-
     flow = create_flow()
 
     authorization_url, state = flow.authorization_url(
@@ -118,6 +100,8 @@ def connect_gmail():
         include_granted_scopes="true",
         prompt="consent",
     )
+
+    from flask import session
 
     session["oauth_state"] = state
     session["code_verifier"] = flow.code_verifier
@@ -127,72 +111,56 @@ def connect_gmail():
 
 @email_bp.route("/oauth2callback")
 def oauth2callback():
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
+    from flask import session
 
-    flow = create_flow(state=session.get("oauth_state"))
-    flow.code_verifier = session.get("code_verifier")
+    flow = create_flow(
+        state=session.get("oauth_state")
+    )
 
-    flow.fetch_token(authorization_response=request.url)
+    flow.code_verifier = session.get(
+        "code_verifier"
+    )
+
+    flow.fetch_token(
+        authorization_response=request.url
+    )
 
     credentials = flow.credentials
 
-    gmail = build("gmail", "v1", credentials=credentials)
+    gmail = build(
+        "gmail",
+        "v1",
+        credentials=credentials,
+    )
 
-    profile = gmail.users().getProfile(userId="me").execute()
+    profile = (
+        gmail.users()
+        .getProfile(userId="me")
+        .execute()
+    )
 
     email_address = profile["emailAddress"]
 
-    save_credentials(email_address, credentials)
-
-    return (
-        f"<h2>Gmail Connected Successfully</h2>"
-        f"<p><strong>Email:</strong> {email_address}</p>"
-        f"<p>Credentials saved successfully.</p>"
-        f'<p><a href="/email/messages">View Latest Emails</a></p>'
+    save_credentials(
+        email_address,
+        credentials,
     )
 
-
-@email_bp.route("/messages")
-def messages():
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
-
-    message_list = get_recent_messages(20)
-
-    return render_template(
-        "email/messages.html",
-        messages=message_list,
+    return redirect(
+        url_for("email.dashboard")
     )
 
 
 @email_bp.route("/sync")
 def sync():
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
-
     full_sync = request.args.get("full") == "1"
-    summary = sync_gmail_reports(full_sync=full_sync)
 
-    return render_template(
-        "email/sync_results.html",
-        summary=summary,
+    summary = sync_gmail_reports(
+        full_sync=full_sync
     )
 
-
-@email_bp.route("/reports/<int:report_id>/download")
-def download_report(report_id):
-    if not session.get("logged_in"):
-        return redirect(url_for("auth.login"))
-
-    report = get_report_by_id(report_id)
-
-    if report is None:
-        return redirect(url_for("email.dashboard"))
-
-    return send_file(
-        BytesIO(report.file_data),
-        as_attachment=True,
-        download_name=report.filename,
-        mimetype=report.content_type or "application/octet-stream",
+    return render_template(
+        "email/dashboard.html",
+        account=EmailAccount.query.first(),
+        summary=summary,
     )
